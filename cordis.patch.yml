@@ -1,0 +1,9 @@
+# dsh-cogdebt bundle patch：往 profile 里插一条 cogdebt 插件
+- insert:
+    - id: dsh-cogdebt
+      name: dsh-cogdebt
+      config:
+        scanIntervalMinutes: 60
+        quietHours: [23, 8]
+        nagCooldownHours: 48
+        maxPerScan: 2
