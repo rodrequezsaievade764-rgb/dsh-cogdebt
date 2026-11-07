@@ -1,6 +1,6 @@
 {
   "name": "dsh-cogdebt",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "认知债务追踪：记下那些你「先跳过、回头再看」却没回头的东西，按利息排序催你还。",
   "type": "module",
@@ -9,10 +9,29 @@
     ".": "./lib/index.js",
     "./package.json": "./package.json"
   },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\""
+  },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
     }
+  },
+  "keywords": ["deepseek-harness", "dsh-plugin", "debt", "learning", "reminder"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rodrequezsaievade764-rgb/dsh-cogdebt.git"
+  },
+  "homepage": "https://github.com/rodrequezsaievade764-rgb/dsh-cogdebt",
+  "engines": {
+    "node": ">=22.13.0"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "*"
