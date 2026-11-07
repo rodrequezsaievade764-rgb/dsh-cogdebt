@@ -61,20 +61,35 @@ test('defineTool：抛非 Error 也能兜住', async () => {
   assert.equal((await t.execute({})).message, '出错了：裸字符串')
 })
 
-test('render：默认取 message', () => {
-  const t = defineTool({ name: 'r', description: 'd', execute: async () => ({ ok: true, message: 'hi' }) })
-  assert.equal(t.render({ ok: true, message: 'hi' }), 'hi')
-  assert.equal(t.render(null), '')
+test('output：宿主校验的形状——schema 与 render 都在 output 里', () => {
+  const t = defineTool({ name: 'shape', description: 'd', execute: async () => ({ ok: true, message: 'hi' }) })
+  // 宿主拒收工具的条件就是这个：render 不在 output 里，或者根本不是函数。
+  // 曾经 render 被放在工具对象顶层，插件加载正常，四个工具一个都调不到。
+  assert.equal(typeof t.output.schema, 'object')
+  assert.equal(typeof t.output.render, 'function')
+  assert.equal(t.render, undefined, 'render 不能同时挂在顶层，形态只认 output.render')
 })
 
-test('render：可自定义', () => {
+test('render：默认把 message 包成内容块数组', () => {
+  const t = defineTool({ name: 'r', description: 'd', execute: async () => ({ ok: true, message: 'hi' }) })
+  assert.deepEqual(t.output.render({}, { ok: true, message: 'hi' }), [{ type: 'text', text: 'hi' }])
+  assert.deepEqual(t.output.render({}, null), [{ type: 'text', text: '✓' }])
+})
+
+test('render：失败时带 ✗ 前缀', () => {
+  const t = defineTool({ name: 'rf', description: 'd', execute: async () => ({ ok: false, message: '坏了' }) })
+  assert.deepEqual(t.output.render({}, { ok: false, message: '坏了' }), [{ type: 'text', text: '✗ 坏了' }])
+  assert.deepEqual(t.output.render({}, { ok: false }), [{ type: 'text', text: '✗ 没成功' }])
+})
+
+test('render：可自定义，同样在 output 里', () => {
   const t = defineTool({
     name: 'r2',
     description: 'd',
     execute: async () => ({ ok: true, message: 'hi' }),
-    render: (r) => 'R:' + r.message,
+    render: (_a, v) => [{ type: 'text', text: 'R:' + v.message }],
   })
-  assert.equal(t.render({ message: 'hi' }), 'R:hi')
+  assert.deepEqual(t.output.render({}, { message: 'hi' }), [{ type: 'text', text: 'R:hi' }])
 })
 
 test('类型小工具产出正确 type', () => {
