@@ -383,11 +383,14 @@ test('cogdebt_list：空白 reason 当没给，不算非法', async () => {
   }
 })
 
-test('cogdebt_list：过滤后无结果给干净文案', async () => {
+test('cogdebt_list：按 reason 筛空时说清是筛空的，不说「账本干净」', async () => {
   const { tool, cleanup } = setup()
   try {
     await tool('cogdebt_owe').execute({ topic: 'A', reason: 'avoid' })
-    assert.match((await tool('cogdebt_list').execute({ reason: 'hard' })).message, /账本干净/)
+    // 账上有债，只是没有「看不懂」这一类。说「账本干净」会让人以为记丢了。
+    const r = await tool('cogdebt_list').execute({ reason: 'hard' })
+    assert.match(r.message, /看不懂/)
+    assert.doesNotMatch(r.message, /账本干净/)
   } finally {
     cleanup()
   }
@@ -554,7 +557,7 @@ test('cogdebt_list：tag 筛不到时给出明确空态，不说「账本干净�
     await tool('cogdebt_owe').execute({ topic: '有的事', tags: 'a' })
     const r = await tool('cogdebt_list').execute({ tag: 'zzz' })
     assert.equal(r.ok, true)
-    assert.match(r.message, /没有带「zzz」标签的债/)
+    assert.match(r.message, /没有带「zzz」标签的/)
     assert.doesNotMatch(r.message, /账本干净/)
   } finally {
     cleanup()
@@ -641,6 +644,28 @@ test('store.read：老数据 tags 是裸字符串时自动归一成数组，tag 
     }), 'utf8')
     const r = await tool('cogdebt_list').execute({ tag: 'legacy' })
     assert.match(r.message, /老格式/)
+  } finally {
+    cleanup()
+  }
+})
+test('cogdebt_list：tag 与 reason 同时筛空时，两个条件都要说出来', async () => {
+  const { tool, cleanup } = setup()
+  try {
+    await tool('cogdebt_owe').execute({ topic: 'A', reason: 'avoid', tags: 'x' })
+    const r = await tool('cogdebt_list').execute({ tag: 'x', reason: 'hard' })
+    assert.equal(r.ok, true)
+    assert.match(r.message, /带「x」标签/)
+    assert.match(r.message, /看不懂/)
+  } finally {
+    cleanup()
+  }
+})
+
+test('cogdebt_list：账本全空时不提筛选条件，直接说干净', async () => {
+  const { tool, cleanup } = setup()
+  try {
+    const r = await tool('cogdebt_list').execute({ tag: 'zzz' })
+    assert.match(r.message, /账本干净/)
   } finally {
     cleanup()
   }
