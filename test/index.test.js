@@ -513,3 +513,135 @@ test('config：scanIntervalMinutes 下限 10 分钟', () => {
     cleanup()
   }
 })
+
+test('cogdebt_owe：tags 归一化 —— 中文逗号/空格都算分隔，去重、小写、上限 8', async () => {
+  const { tool, cleanup } = setup()
+  try {
+    const r = await tool('cogdebt_owe').execute({
+      topic: '读那段编译原理',
+      tags: '编译，后端, 后端  编译, DS',
+    })
+    assert.deepEqual(r.debt.tags, ['编译', '后端', 'ds'])
+
+    const many = await tool('cogdebt_owe').execute({
+      topic: '标签太多',
+      tags: 'a,b,c,d,e,f,g,h,i,j,k',
+    })
+    assert.equal(many.debt.tags.length, 8)
+    assert.deepEqual(many.debt.tags, ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'])
+  } finally {
+    cleanup()
+  }
+})
+
+test('cogdebt_list：tag 筛选只列带该标签的债，标签大小写不敏感', async () => {
+  const { tool, cleanup } = setup()
+  try {
+    await tool('cogdebt_owe').execute({ topic: '前端的事', tags: 'FE' })
+    await tool('cogdebt_owe').execute({ topic: '后端的事', tags: 'be' })
+    const r = await tool('cogdebt_list').execute({ tag: 'fe' })
+    assert.match(r.message, /前端的事/)
+    assert.doesNotMatch(r.message, /后端的事/)
+    assert.equal(r.count, 1)
+  } finally {
+    cleanup()
+  }
+})
+
+test('cogdebt_list：tag 筛不到时给出明确空态，不说「账本干净」', async () => {
+  const { tool, cleanup } = setup()
+  try {
+    await tool('cogdebt_owe').execute({ topic: '有的事', tags: 'a' })
+    const r = await tool('cogdebt_list').execute({ tag: 'zzz' })
+    assert.equal(r.ok, true)
+    assert.match(r.message, /没有带「zzz」标签的债/)
+    assert.doesNotMatch(r.message, /账本干净/)
+  } finally {
+    cleanup()
+  }
+})
+
+test('cogdebt_list：all=true 时 tag 筛选同样生效，不被忽略', async () => {
+  const { tool, cleanup } = setup()
+  try {
+    await tool('cogdebt_owe').execute({ topic: '带标的', tags: 'x' })
+    await tool('cogdebt_owe').execute({ topic: '不带标的' })
+    const r = await tool('cogdebt_list').execute({ all: true, tag: 'x' })
+    assert.match(r.message, /带标的/)
+    assert.doesNotMatch(r.message, /不带标的/)
+    assert.match(r.message, /只列了带「x」标签的/)
+    assert.equal(r.count, 1)
+  } finally {
+    cleanup()
+  }
+})
+
+test('cogdebt_list：只列一笔时把 note 一并显示（note 不再是只写不读的死字段）', async () => {
+  const { tool, cleanup } = setup()
+  try {
+    await tool('cogdebt_owe').execute({ topic: '只有一笔', note: '当时想的是先看源码' })
+    const r = await tool('cogdebt_list').execute({})
+    assert.match(r.message, /备注：当时想的是先看源码/)
+  } finally {
+    cleanup()
+  }
+})
+
+test('cogdebt_list：多笔时不塞备注，避免刷屏', async () => {
+  const { tool, cleanup } = setup()
+  try {
+    await tool('cogdebt_owe').execute({ topic: '甲', note: '甲的备注' })
+    await tool('cogdebt_owe').execute({ topic: '乙', note: '乙的备注' })
+    const r = await tool('cogdebt_list').execute({})
+    assert.doesNotMatch(r.message, /备注：/)
+  } finally {
+    cleanup()
+  }
+})
+
+test('cogdebt_pay：id 精确指到已结清的债，说清是哪天结的、怎么结的', async () => {
+  const { tool, cleanup } = setup()
+  try {
+    const a = await tool('cogdebt_owe').execute({ topic: '还过的债' })
+    await tool('cogdebt_pay').execute({ id: a.debt.id, mode: 'dropped' })
+    const r = await tool('cogdebt_pay').execute({ id: a.debt.id })
+    assert.equal(r.ok, false)
+    assert.match(r.message, /已经划掉了/)
+    assert.match(r.message, /还过的债/)
+    assert.doesNotMatch(r.message, /mode 只认/)
+  } finally {
+    cleanup()
+  }
+})
+
+test('cogdebt_pay：已还清的债再结，提示「还清了」而不是状态码', async () => {
+  const { tool, cleanup } = setup()
+  try {
+    const a = await tool('cogdebt_owe').execute({ topic: '甲债' })
+    await tool('cogdebt_pay').execute({ id: a.debt.id, mode: 'paid' })
+    const r = await tool('cogdebt_pay').execute({ id: a.debt.id })
+    assert.equal(r.ok, false)
+    assert.match(r.message, /已经还清了/)
+    assert.doesNotMatch(r.message, /\(paid\)|（paid）/)
+  } finally {
+    cleanup()
+  }
+})
+
+test('store.read：老数据 tags 是裸字符串时自动归一成数组，tag 筛得住', async () => {
+  const { dir, tool, cleanup } = setup()
+  try {
+    const { writeFileSync } = await import('node:fs')
+    writeFileSync(join(dir, 'debts.json'), JSON.stringify({
+      version: 1,
+      debts: [
+        { id: 'c1', topic: '老格式', tags: '旧标签, legacy', reason: 'hard', weight: 2, status: 'open', createdAt: Date.now() },
+      ],
+      meta: { lastScanAt: 0, lastNag: {} },
+    }), 'utf8')
+    const r = await tool('cogdebt_list').execute({ tag: 'legacy' })
+    assert.match(r.message, /老格式/)
+  } finally {
+    cleanup()
+  }
+})
