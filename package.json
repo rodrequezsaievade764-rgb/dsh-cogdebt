@@ -1,6 +1,6 @@
 {
   "name": "dsh-cogdebt",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "private": true,
   "description": "认知债务追踪：记下那些你「先跳过、回头再看」却没回头的东西，按利息排序催你还。",
   "type": "module",
