@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## 0.2.1
+
+**四个工具从来没在真实宿主里挂上过。**
+
+宿主对工具的校验是 `output` 里必须同时有 `schema` 与 `render`，缺一个就拒收，且只报 warn 级：
+
+```
+warn cogdebt: 工具 cogdebt_owe 挂不上：
+tool "cogdebt_owe" must declare output { schema, render, presentationMeta? }
+```
+
+0.1.0 起 `render` 一直被放在工具对象顶层，而宿主要求它在 `output` 里面。插件加载成功、没有异常、日志只有一行不起眼的警告，但 `cogdebt_owe` / `cogdebt_pay` / `cogdebt_list` / `cogdebt_stat` 一个都调不到。0.2.0 的 91 个用例用自建替身，形状没人校验，所以全绿。
+
+- `render` 移进 `output`，返回值改为内容块数组 `[{ type: 'text', text }]`。
+- 默认 render 补失败前缀 `✗`，与 taskpilot 同形。
+- 测试加四条锁住形状：`output.schema` 与 `output.render` 都必须在 `output` 里、顶层不得再有 `render`、默认 render 输出内容块数组、失败带 `✗`。91 → 93 个用例。
+
 ## 0.2.0
 
 第一版能记账能算利息；这一版把「静默出错」的路子堵上，并且第一次带测试。

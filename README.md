@@ -59,7 +59,7 @@ node --test "test/**/*.test.js"
 测试全离线，不依赖宿主：`lib/**` 是纯函数与一个最小 `ctx` 替身。
 `node --test` 是 Node 内置的，库里零运行时依赖。
 
-91 个用例，分五层：`store`（读写、坏条目归一化）、`interest`（利息公式与汇总）、`tool`（工具壳的兜错）、`index`（四个工具的行为与参数边界）、`package`（清单字段与装配）。存储用 `mkdtempSync` 造临时目录，不碰真实账本。
+93 个用例，分五层：`store`（读写、坏条目归一化）、`interest`（利息公式与汇总）、`tool`（工具壳的兜错）、`index`（四个工具的行为与参数边界）、`package`（清单字段与装配）。存储用 `mkdtempSync` 造临时目录，不碰真实账本。
 
 ## 装
 
